@@ -1,0 +1,17 @@
+:root { --gold: #ffb400; --red: #ff003c; --green: #00ff41; --bg: #050505; --card: #0d0d0d; }
+body { background: var(--bg); color: #fff; font-family: 'Orbitron', sans-serif; margin: 0; padding: 10px; overflow: hidden; }
+.rtx-container { max-width: 450px; margin: auto; height: 98dvh; display: flex; flex-direction: column; gap: 8px; }
+header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; padding-bottom: 5px; }
+.gold { color: var(--gold); }
+#timer { color: var(--gold); font-family: monospace; font-size: 1.2rem; }
+#chart-area { flex-grow: 1; min-height: 250px; background: var(--card); border-radius: 12px; border: 1px solid #1a1a1a; }
+.analysis-panel { background: var(--card); border: 1px solid var(--gold); border-radius: 12px; padding: 15px; text-align: center; }
+#sig-icon { font-size: 45px; margin: 0; transition: color 0.3s; }
+#sig-logic-text { font-size: 10px; color: #555; margin-top: 8px; line-height: 1.3; }
+.row { display: flex; gap: 8px; margin-bottom: 8px; }
+input, select, button { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 8px; flex: 1; font-family: 'Orbitron'; font-size: 11px; }
+button { background: var(--gold); color: #000; font-weight: bold; border: none; cursor: pointer; }
+.led-off { width: 10px; height: 10px; background: #333; border-radius: 50%; display: inline-block; }
+.led-on { background: var(--green); box-shadow: 0 0 10px var(--green); }
+#terminal { height: 45px; font-size: 9px; color: #444; overflow-y: auto; border-top: 1px solid #111; padding-top: 5px; }
+.hidden { display: none; }
