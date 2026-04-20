@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RTX AI PRO V10</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+    <div class="rtx-container">
+        <header>
+            <div class="logo">
+                <span id="led" class="led-off"></span> RTX <span class="gold">AI PRO V10</span>
+            </div>
+            <div id="timer">00:00</div>
+        </header>
+
+        <div id="chart-area"></div>
+        
+        <div class="analysis-panel">
+            <div id="loader" class="hidden">SCANNING PATTERNS...</div>
+            <div class="signal-display">
+                <h1 id="sig-icon">?</h1>
+                <div class="sig-meta">
+                    <p id="sig-status">ENGINE READY</p>
+                    <p id="sig-accuracy">ACCURACY: --%</p>
+                </div>
+            </div>
+            <p id="sig-logic-text"></p>
+        </div>
+
+        <div class="ui-controls">
+            <div class="row">
+                <input type="text" id="app-id" placeholder="App ID" required>
+                <input type="password" id="api-key" placeholder="AI Key" required>
+            </div>
+            <div class="row">
+                <select id="market-id"><option value="R_100">Volatility 100</option><option value="R_50">Volatility 50</option></select>
+                <select id="ai-model"><option value="gemini">Gemini Pro</option><option value="gpt">GPT-4o</option></select>
+            </div>
+            <button id="ignite-btn">IGNITE RTX ENGINE</button>
+            <div id="terminal"></div>
+        </div>
+    </div>
+    <audio id="alert-beep" src="/static/beep.mp3" preload="auto"></audio>
+    <script src="/static/script.js"></script>
+</body>
+              </html>
