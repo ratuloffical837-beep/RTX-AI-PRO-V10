@@ -1,6 +1,5 @@
 let chart, series, ws, isAnalyzing = false;
 let candleHistory = [];
-const beep = document.getElementById('alert-beep');
 
 document.addEventListener('DOMContentLoaded', () => {
     const el = document.getElementById('chart-area');
@@ -21,24 +20,27 @@ document.addEventListener('DOMContentLoaded', () => {
 function igniteRTX() {
     const appId = document.getElementById('app-id').value;
     const apiKey = document.getElementById('api-key').value;
-    if(!appId || !apiKey) return alert("Fill Credentials!");
+    const market = document.getElementById('market').value; // ফিক্সড ID
 
-    beep.play().then(() => beep.pause()); 
+    if(!appId || !apiKey) return alert("Credentials Missing!");
+
     if (ws) ws.close();
     
     ws = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${appId}`);
     
     ws.onopen = () => {
-        document.getElementById('led').className = 'led-on';
+        const led = document.getElementById('led');
+        if(led) led.className = 'led-on';
         addLog("RTX ENGINE ONLINE");
         ws.send(JSON.stringify({
-            ticks_history: document.getElementById('market-id').value,
+            ticks_history: market,
             count: 50, end: "latest", style: "candles", granularity: 300, subscribe: 1
         }));
     };
 
     ws.onclose = () => {
-        document.getElementById('led').className = 'led-off';
+        const led = document.getElementById('led');
+        if(led) led.className = 'led-off';
         addLog("CONNECTION INTERRUPTED");
     };
 
@@ -65,6 +67,7 @@ function igniteRTX() {
             const remaining = 300 - (parseInt(o.epoch) % 300);
             document.getElementById('timer').innerText = `${Math.floor(remaining/60)}:${(remaining%60).toString().padStart(2,'0')}`;
 
+            // বিশ্লেষণ শুরু করার লজিক (৫মিনিটের ক্যান্ডেল শেষ হওয়ার ১০ সেকেন্ড আগে)
             if (remaining <= 10 && remaining > 2 && !isAnalyzing) {
                 isAnalyzing = true;
                 processAI();
@@ -76,7 +79,9 @@ function igniteRTX() {
 
 async function processAI() {
     addLog("ANALYZING MARKET...");
-    document.getElementById('loader').classList.remove('hidden');
+    const loader = document.getElementById('loader');
+    if(loader) loader.classList.remove('hidden');
+    
     try {
         const res = await fetch('/predict', {
             method: 'POST',
@@ -89,23 +94,33 @@ async function processAI() {
         });
         const result = await res.json();
         updateUI(result);
-        beep.play().catch(() => {});
-    } catch (e) { addLog("AI LINK ERROR"); }
-    document.getElementById('loader').classList.add('hidden');
+    } catch (e) { 
+        addLog("AI LINK ERROR"); 
+    }
+    if(loader) loader.classList.add('hidden');
 }
 
 function updateUI(res) {
+    if(!res || res.error) return addLog("AI ERROR: " + (res.error || "No Response"));
+
     const icon = document.getElementById('sig-icon');
-    icon.innerText = res.color === 'Green' ? '🟢' : (res.color === 'Red' ? '🔴' : '⚪');
-    icon.style.color = res.color === 'Green' ? '#00ff41' : (res.color === 'Red' ? '#ff003c' : '#555');
-    document.getElementById('sig-status').innerText = `SIGNAL: ${res.color.toUpperCase()}`;
-    document.getElementById('sig-accuracy').innerText = `ACCURACY: ${res.confidence}`;
-    document.getElementById('sig-logic-text').innerText = res.reason;
+    const status = document.getElementById('sig-status');
+    const accuracy = document.getElementById('sig-accuracy');
+    const logic = document.getElementById('sig-logic-text');
+
+    if(icon) {
+        icon.innerText = res.color === 'Green' ? '🟢' : (res.color === 'Red' ? '🔴' : '⚪');
+        icon.style.color = res.color === 'Green' ? '#00ff41' : (res.color === 'Red' ? '#ff003c' : '#555');
+    }
+    if(status) status.innerText = `SIGNAL: ${res.color.toUpperCase()}`;
+    if(accuracy) accuracy.innerText = `ACCURACY: ${res.confidence}`;
+    if(logic) logic.innerText = res.reason || "";
 }
 
 function addLog(m) {
     const l = document.getElementById('terminal');
+    if(!l) return;
     const time = new Date().toLocaleTimeString([], { hour12: false });
     l.innerHTML += `<div>[${time}] >> ${m}</div>`;
     l.scrollTop = l.scrollHeight;
-      }
+        }
