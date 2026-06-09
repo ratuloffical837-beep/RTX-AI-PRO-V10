@@ -1,0 +1,20 @@
+{
+  "name": "quotex-lifetime-bulletproof-backend",
+  "version": "2.6.0",
+  "description": "Sealed V2.6-PRO-MAX Engine with Advanced Ping-Pong Protocol & Crash Protection",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "technicalindicators": "^3.1.0",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
