@@ -1,7 +1,7 @@
 {
   "name": "quotex-lifetime-bulletproof-backend",
-  "version": "2.6.0",
-  "description": "Sealed V2.6-PRO-MAX Engine with Advanced Ping-Pong Protocol & Crash Protection",
+  "version": "2.8.6",
+  "description": "Sealed V2.8.6-PRO-MAX - Hoisting & Reference Error Fixed Production Build",
   "main": "server.js",
   "type": "module",
   "scripts": {
