@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-// 🚀 ২-খ: ৬৫%, ৩০% এবং ৫% হার্ড ভিউপোর্ট গ্রিড লক স্টাইল (Sealed Layout Window)
 const styles = `
   body { background: #050709; color: white; font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; overflow: hidden; user-select: none; height: 100vh; width: 100vw; }
   .login-screen { height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, #15191e 0%, #050709 100%); }
@@ -41,70 +40,73 @@ const styles = `
 `;
 
 const marketPairs = [
-  { id: "EURUSD_otc", name: "EUR/USD (OTC)", tvSymbol: "FX_IDC:EURUSD" },
-  { id: "NZDUSD_otc", name: "NZD/USD (OTC)", tvSymbol: "FX_IDC:NZDUSD" },
-  { id: "EURNZD_otc", name: "EUR/NZD (OTC)", tvSymbol: "FX_IDC:EURNZD" },
-  { id: "GBPNZD_otc", name: "GBP/NZD (OTC)", tvSymbol: "FX_IDC:GBPNZD" },
-  { id: "CADCHF_otc", name: "CAD/CHF (OTC)", tvSymbol: "FX_IDC:CADCHF" },
-  { id: "NZDJPY_otc", name: "NZD/JPY (OTC)", tvSymbol: "FX_IDC:NZDJPY" },
-  { id: "NZDCAD_otc", name: "NZD/CAD (OTC)", tvSymbol: "FX_IDC:NZDCAD" },
-  { id: "USDARS_otc", name: "USD/ARS (OTC)", tvSymbol: "FX:USDARS" },
-  { id: "USDEGP_otc", name: "USD/EGP (OTC)", tvSymbol: "FX:USDEGP" },
-  { id: "USDIDR_otc", name: "USD/IDR (OTC)", tvSymbol: "FX:USDIDR" },
-  { id: "USDMXN_otc", name: "USD/MXN (OTC)", tvSymbol: "FX:USDMXN" },
-  { id: "USDNGN_otc", name: "USD/NGN (OTC)", tvSymbol: "FX:USDNGN" },
-  { id: "USDPKR_otc", name: "USD/PKR (OTC)", tvSymbol: "FX:USDPKR" },
-  { id: "USDZAR_otc", name: "USD/ZAR (OTC)", tvSymbol: "FX:USDZAR" },
-  { id: "USDDZD_otc", name: "USD/DZD (OTC)", tvSymbol: "FX:USDDZD" },
-  { id: "USDPHP_otc", name: "USD/PHP (OTC)", tvSymbol: "FX:USDPHP" },
-  { id: "NZDCHF_otc", name: "NZD/CHF (OTC)", tvSymbol: "FX_IDC:NZDCHF" },
-  { id: "AUDNZD_otc", name: "AUD/NZD (OTC)", tvSymbol: "FX_IDC:AUDNZD" },
-  { id: "USDBRL_otc", name: "USD/BRL (OTC)", tvSymbol: "FX:USDBRL" },
-  { id: "USDBDT_otc", name: "USD/BDT (OTC)", tvSymbol: "FX:USDBDT" },
-  { id: "USDINR_otc", name: "USD/INR (OTC)", tvSymbol: "FX:USDINR" },
-  { id: "USDCOP_otc", name: "USD/COP (OTC)", tvSymbol: "FX:USDCOP" },
-  { id: "USDJPY", name: "USD/JPY (REAL)", tvSymbol: "FX:USDJPY" },
-  { id: "EURJPY", name: "EUR/JPY (REAL)", tvSymbol: "FX:EURJPY" },
-  { id: "EURUSD", name: "EUR/USD (REAL)", tvSymbol: "FX:EURUSD" },
-  { id: "GBPJPY", name: "GBP/JPY (REAL)", tvSymbol: "FX:GBPJPY" },
-  { id: "AUDJPY", name: "AUD/JPY (REAL)", tvSymbol: "FX:AUDJPY" },
-  { id: "CADJPY", name: "CAD/JPY (REAL)", tvSymbol: "FX:CADJPY" },
-  { id: "CHFJPY", name: "CHF/JPY (REAL)", tvSymbol: "FX:CHFJPY" },
-  { id: "EURAUD", name: "EUR/AUD (REAL)", tvSymbol: "FX:EURAUD" },
-  { id: "AUDCAD", name: "AUD/CAD (REAL)", tvSymbol: "FX:AUDCAD" },
-  { id: "AUDCHF", name: "AUD/CHF (REAL)", tvSymbol: "FX:AUDCHF" },
-  { id: "EURCAD", name: "EUR/CAD (REAL)", tvSymbol: "FX:EURCAD" },
-  { id: "EURCHF", name: "EUR/CHF (REAL)", tvSymbol: "FX:EURCHF" },
-  { id: "GBPUSD", name: "GBP/USD (REAL)", tvSymbol: "FX:GBPUSD" },
-  { id: "USDCAD", name: "USD/CAD (REAL)", tvSymbol: "FX:USDCAD" },
-  { id: "AUDUSD", name: "AUD/USD (REAL)", tvSymbol: "FX:AUDUSD" },
-  { id: "GBPAUD", name: "GBP/AUD (REAL)", tvSymbol: "FX:GBPAUD" },
-  { id: "EURGBP", name: "EUR/GBP (REAL)", tvSymbol: "FX:EURGBP" },
-  { id: "GBPCAD", name: "GBP/CAD (REAL)", tvSymbol: "FX:GBPCAD" },
-  { id: "GBPCHF", name: "GBP/CHF (REAL)", tvSymbol: "FX:GBPCHF" },
-  { id: "USDCHF", name: "USD/CHF (REAL)", tvSymbol: "FX:USDCHF" },
-  { id: "SOL_otc", name: "Solana (OTC)", tvSymbol: "BINANCE:SOLUSDT" },
-  { id: "ATOM_otc", name: "Cosmos (OTC)", tvSymbol: "BINANCE:ATOMUSDT" },
-  { id: "XRP_otc", name: "Ripple (OTC)", tvSymbol: "BINANCE:XRPUSDT" },
-  { id: "ETC_otc", name: "Ethereum Classic (OTC)", tvSymbol: "BINANCE:ETCUSDT" },
-  { id: "BTC_otc", name: "Bitcoin (OTC)", tvSymbol: "BINANCE:BTCUSDT" },
-  { id: "LTC_otc", name: "Litecoin (OTC)", tvSymbol: "BINANCE:LTCUSDT" },
-  { id: "TON_otc", name: "Toncoin (OTC)", tvSymbol: "BINANCE:TONUSDT" },
-  { id: "DOT_otc", name: "Polkadot (OTC)", tvSymbol: "BINANCE:DOTUSDT" },
-  { id: "AVAX_otc", name: "Avalanche (OTC)", tvSymbol: "BINANCE:AVAXUSDT" },
-  { id: "DASH_otc", name: "Dash (OTC)", tvSymbol: "BINANCE:DASHUSDT" },
-  { id: "ZEC_otc", name: "Zcash (OTC)", tvSymbol: "BINANCE:ZECUSDT" },
-  { id: "UKBRENT_otc", name: "UKBrent (OTC)", tvSymbol: "TVC:UKOIL" },
-  { id: "USCRUDE_otc", name: "USCrude (OTC)", tvSymbol: "TVC:USOIL" },
-  { id: "SILVER_otc", name: "Silver (OTC)", tvSymbol: "TVC:SILVER" },
-  { id: "GOLD_otc", name: "Gold (OTC)", tvSymbol: "TVC:GOLD" }
+  { id: "EURUSD_otc", name: "EUR/USD (OTC Mode)", tvSymbol: "FX_IDC:EURUSD" },
+  { id: "NZDUSD_otc", name: "NZD/USD (OTC Mode)", tvSymbol: "FX_IDC:NZDUSD" },
+  { id: "EURNZD_otc", name: "EUR/NZD (OTC Mode)", tvSymbol: "FX_IDC:EURNZD" },
+  { id: "GBPNZD_otc", name: "GBP/NZD (OTC Mode)", tvSymbol: "FX_IDC:GBPNZD" },
+  { id: "CADCHF_otc", name: "CAD/CHF (OTC Mode)", tvSymbol: "FX_IDC:CADCHF" },
+  { id: "NZDJPY_otc", name: "NZD/JPY (OTC Mode)", tvSymbol: "FX_IDC:NZDJPY" },
+  { id: "NZDCAD_otc", name: "NZD/CAD (OTC Mode)", tvSymbol: "FX_IDC:NZDCAD" },
+  { id: "USDARS_otc", name: "USD/ARS (OTC Mode)", tvSymbol: "FX:USDARS" },
+  { id: "USDEGP_otc", name: "USD/EGP (OTC Mode)", tvSymbol: "FX:USDEGP" },
+  { id: "USDIDR_otc", name: "USD/IDR (OTC Mode)", tvSymbol: "FX:USDIDR" },
+  { id: "USDMXN_otc", name: "USD/MXN (OTC Mode)", tvSymbol: "FX:USDMXN" },
+  { id: "USDNGN_otc", name: "USD/NGN (OTC Mode)", tvSymbol: "FX:USDNGN" },
+  { id: "USDPKR_otc", name: "USD/PKR (OTC Mode)", tvSymbol: "FX:USDPKR" },
+  { id: "USDZAR_otc", name: "USD/ZAR (OTC Mode)", tvSymbol: "FX:USDZAR" },
+  { id: "USDDZD_otc", name: "USD/DZD (OTC Mode)", tvSymbol: "FX:USDDZD" },
+  { id: "USDPHP_otc", name: "USD/PHP (OTC Mode)", tvSymbol: "FX:USDPHP" },
+  { id: "NZDCHF_otc", name: "NZD/CHF (OTC Mode)", tvSymbol: "FX_IDC:NZDCHF" },
+  { id: "AUDNZD_otc", name: "AUD/NZD (OTC Mode)", tvSymbol: "FX_IDC:AUDNZD" },
+  { id: "USDBRL_otc", name: "USD/BRL (OTC Mode)", tvSymbol: "FX:USDBRL" },
+  { id: "USDBDT_otc", name: "USD/BDT (OTC Mode)", tvSymbol: "FX:USDBDT" },
+  { id: "USDINR_otc", name: "USD/INR (OTC Mode)", tvSymbol: "FX:USDINR" },
+  { id: "USDCOP_otc", name: "USD/COP (OTC Mode)", tvSymbol: "FX:USDCOP" },
+  { id: "USDJPY", name: "USD/JPY (Real Feed)", tvSymbol: "FX:USDJPY" },
+  { id: "EURJPY", name: "EUR/JPY (Real Feed)", tvSymbol: "FX:EURJPY" },
+  { id: "EURUSD", name: "EUR/USD (Real Feed)", tvSymbol: "FX:EURUSD" },
+  { id: "GBPJPY", name: "GBP/JPY (Real Feed)", tvSymbol: "FX:GBPJPY" },
+  { id: "AUDJPY", name: "AUD/JPY (Real Feed)", tvSymbol: "FX:AUDJPY" },
+  { id: "CADJPY", name: "CAD/JPY (Real Feed)", tvSymbol: "FX:CADJPY" },
+  { id: "CHFJPY", name: "CHF/JPY (Real Feed)", tvSymbol: "FX:CHFJPY" },
+  { id: "EURAUD", name: "EUR/AUD (Real Feed)", tvSymbol: "FX:EURAUD" },
+  { id: "AUDCAD", name: "AUD/CAD (Real Feed)", tvSymbol: "FX:AUDCAD" },
+  { id: "AUDCHF", name: "AUD/CHF (Real Feed)", tvSymbol: "FX:AUDCHF" },
+  { id: "EURCAD", name: "EUR/CAD (Real Feed)", tvSymbol: "FX:EURCAD" },
+  { id: "EURCHF", name: "EUR/CHF (Real Feed)", tvSymbol: "FX:EURCHF" },
+  { id: "GBPUSD", name: "GBP/USD (Real Feed)", tvSymbol: "FX:GBPUSD" },
+  { id: "USDCAD", name: "USD/CAD (Real Feed)", tvSymbol: "FX:USDCAD" },
+  { id: "AUDUSD", name: "AUD/USD (Real Feed)", tvSymbol: "FX:AUDUSD" },
+  { id: "GBPAUD", name: "GBP/AUD (Real Feed)", tvSymbol: "FX:GBPAUD" },
+  { id: "EURGBP", name: "EUR/GBP (Real Feed)", tvSymbol: "FX:EURGBP" },
+  { id: "GBPCAD", name: "GBP/CAD (Real Feed)", tvSymbol: "FX:GBPCAD" },
+  { id: "GBPCHF", name: "GBP/CHF (Real Feed)", tvSymbol: "FX:GBPCHF" },
+  { id: "USDCHF", name: "USD/CHF (Real Feed)", tvSymbol: "FX:USDCHF" },
+  { id: "SOL_otc", name: "Solana (OTC Mode)", tvSymbol: "BINANCE:SOLUSDT" },
+  { id: "ATOM_otc", name: "Cosmos (OTC Mode)", tvSymbol: "BINANCE:ATOMUSDT" },
+  { id: "XRP_otc", name: "Ripple (OTC Mode)", tvSymbol: "BINANCE:XRPUSDT" },
+  { id: "ETC_otc", name: "Ethereum Classic (OTC Mode)", tvSymbol: "BINANCE:ETCUSDT" },
+  { id: "BTC_otc", name: "Bitcoin (OTC Mode)", tvSymbol: "BINANCE:BTCUSDT" },
+  { id: "LTC_otc", name: "Litecoin (OTC Mode)", tvSymbol: "BINANCE:LTCUSDT" },
+  { id: "TON_otc", name: "Toncoin (OTC Mode)", tvSymbol: "BINANCE:TONUSDT" },
+  { id: "DOT_otc", name: "Polkadot (OTC Mode)", tvSymbol: "BINANCE:DOTUSDT" },
+  { id: "AVAX_otc", name: "Avalanche (OTC Mode)", tvSymbol: "BINANCE:AVAXUSDT" },
+  { id: "DASH_otc", name: "Dash (OTC Mode)", tvSymbol: "BINANCE:DASHUSDT" },
+  { id: "ZEC_otc", name: "Zcash (OTC Mode)", tvSymbol: "BINANCE:ZECUSDT" },
+  { id: "UKBRENT_otc", name: "UKBrent (OTC Mode)", tvSymbol: "TVC:UKOIL" },
+  { id: "USCRUDE_otc", name: "USCrude (OTC Mode)", tvSymbol: "TVC:USOIL" },
+  { id: "SILVER_otc", name: "Silver (OTC Mode)", tvSymbol: "TVC:SILVER" },
+  { id: "GOLD_otc", name: "Gold (OTC Mode)", tvSymbol: "TVC:GOLD" }
 ];
+
+const sanitizeBackendUrl = (url) => {
+  if (!url) return "your-backend-service.onrender.com";
+  return url.replace(/^(https?:\/\/)/i, "").replace(/\/+$/, "");
+};
 
 function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [ssid, setSsid] = useState(localStorage.getItem('dyn_ssid') || '');
-  
-  // 🚀 ৩-খ: ফ্রন্টএন্ড ডাইনামিক এরর প্রম্পট স্টেট
   const [errorMessage, setErrorMessage] = useState('');
 
   const [symbol, setSymbol] = useState('EURUSD_otc');
@@ -118,17 +120,19 @@ function App() {
 
   const ws = useRef(null);
   
-  // 🚀 ২-গ: রেন্ডার এনভায়রনমেন্টাল ডাইনামিক বাইন্ডিং (আপনার রেন্ডার সার্ভিস ডোমেন এখানে বসান)
-  const RENDER_BACKEND_NAME = "your-backend-service.onrender.com";
+  const RAW_BACKEND_NAME = import.meta.env.VITE_RENDER_BACKEND || "your-backend-service.onrender.com";
+  const CLEAN_BACKEND_NAME = sanitizeBackendUrl(RAW_BACKEND_NAME);
 
   const currentHost = window.location.hostname;
-  const BACKEND_URL = currentHost === "localhost" || currentHost === "127.0.0.1"
-    ? "ws://localhost:3000"
-    : `wss://${RENDER_BACKEND_NAME}`;
+  const isLocal = currentHost === "localhost" || currentHost === "127.0.0.1";
+  
+  const BACKEND_URL = isLocal
+    ? `ws://localhost:3000`
+    : `wss://${CLEAN_BACKEND_NAME}`;
     
-  const PING_HTTP_URL = currentHost === "localhost" || currentHost === "127.0.0.1"
-    ? "http://localhost:3000/health"
-    : `https://${RENDER_BACKEND_NAME}/health`;
+  const PING_HTTP_URL = isLocal
+    ? `http://localhost:3000/health`
+    : `https://${CLEAN_BACKEND_NAME}/health`;
 
   useEffect(() => {
     const styleEl = document.createElement("style");
@@ -139,21 +143,24 @@ function App() {
       window.Telegram.WebApp.ready();
       window.Telegram.WebApp.expand();
     }
-    return () => { cleanSocketBindings(); };
+    
+    return () => { 
+      try { document.head.removeChild(styleEl); } catch(e){}
+    };
   }, []);
 
+  // ✅ রেন্ডার স্লিপ প্রোটেকশন মার্জিন নিরাপদ করতে ৪ মিনিট থেকে কমিয়ে ২.৫ মিনিট (১৫০০০০ ms) করা হলো
   useEffect(() => {
     if (!isConnected) return;
     const keepAliveInterval = setInterval(() => {
       fetch(PING_HTTP_URL).catch(() => {});
-    }, 600000); 
+    }, 150000); 
     return () => clearInterval(keepAliveInterval);
   }, [isConnected]);
 
-  // 🛑 ২-খ: সেশন এক্সপায়ারি ও অন-ক্লোজ এর রেস-কন্ডিশন বাগ ফিক্সিং কোর ফাংশন
   const sessionKickoutCleanup = (msg) => {
     cleanSocketBindings();
-    localStorage.removeItem('dyn_ssid'); // ডেড মেমোরি ইনস্ট্যান্ট ইরেজ
+    localStorage.removeItem('dyn_ssid'); 
     setIsConnected(false);
     setErrorMessage(msg || 'সংযোগ বিচ্ছিন্ন হয়েছে! নতুন SSID দিন।');
   };
@@ -165,7 +172,7 @@ function App() {
       ws.current.onerror = null;
       ws.current.onclose = null;
       if (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING) {
-        ws.current.close();
+        try { ws.current.close(); } catch(e){}
       }
       ws.current = null;
     }
@@ -176,71 +183,71 @@ function App() {
     if (!ssid) return;
     setErrorMessage('');
 
-    cleanSocketBindings(); // ওল্ড ডেড নোড ক্লিয়ারআপ
+    cleanSocketBindings(); 
     ws.current = new WebSocket(BACKEND_URL);
 
     ws.current.onopen = () => {
-      ws.current.send(JSON.stringify({ type: 'CONNECT_ENGINE', ssid }));
+      if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+        ws.current.send(JSON.stringify({ type: 'CONNECT_ENGINE', ssid }));
+      }
     };
 
     ws.current.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      
-      if (data.type === 'CONNECTION_SUCCESS') {
-        setIsConnected(true);
-        localStorage.setItem('dyn_ssid', ssid);
-        setAlertStatus(data.msg);
-      }
-
-      if (data.type === 'MARKET_SHIFT_INITIATED') {
-        setSignal("SYNCING");
-        setAccuracy("00.00");
-        setAlertStatus(`LOADING HISTORICAL DATA FOR ${data.symbol.toUpperCase()}...`);
-      }
-
-      if (data.type === 'LOADING_HISTORY') {
-        setSignal("SYNCING");
-        setAlertStatus("SYNCHRONIZING KLINE BLOCKS...");
-      }
-
-      if (data.type === 'SIGNAL_DATA') {
-        setSignal(data.signal);
-        setAccuracy(data.accuracy);
-        setServerTime(data.serverTime);
-
-        const now = new Date();
-        const currentSec = now.getSeconds();
-        const remaining = 60 - currentSec;
+      try {
+        const data = JSON.parse(event.data);
         
-        if (data.signal === "SCANNING") {
-          setAlertStatus("MARKET TREND NEUTRAL - LOOKING FOR SETUP");
-          setEntryTime("--:--:--"); 
-        } else {
-          if (remaining > 15) {
-            setAlertStatus("MATHEMATICAL SIGNAL LOCK");
-          } else {
-            setAlertStatus(`SURE SHOT MATRIX READY -> CHOOSE ${data.signal}`);
-          }
-          const nextCandleTime = new Date(now.getTime() + remaining * 1000);
-          setEntryTime(nextCandleTime.toLocaleTimeString('en-GB'));
+        if (data.type === 'CONNECTION_SUCCESS') {
+          setIsConnected(true);
+          localStorage.setItem('dyn_ssid', ssid);
+          setAlertStatus(data.msg);
         }
-      }
 
-      // 🛑 ২-খ: এক্সপায়ারি মেসেজ রিসিভ হওয়া মাত্র সেফটি মেমোরি ইরেজার এক্সিকিউশন
-      if (data.type === 'SESSION_EXPIRED') {
-        sessionKickoutCleanup(data.msg);
-      }
+        if (data.type === 'MARKET_SHIFT_INITIATED') {
+          setSignal("SYNCING");
+          setAccuracy("00.00");
+          setAlertStatus(`LOADING HISTORICAL DATA FOR ${data.symbol.toUpperCase()}...`);
+        }
+
+        if (data.type === 'LOADING_HISTORY') {
+          setSignal("SYNCING");
+          setAlertStatus("SYNCHRONIZING KLINE BLOCKS...");
+        }
+
+        if (data.type === 'SIGNAL_DATA') {
+          setSignal(data.signal);
+          setAccuracy(data.accuracy);
+          setServerTime(data.serverTime);
+
+          const now = new Date();
+          const currentSec = now.getSeconds();
+          const remaining = 60 - currentSec;
+          
+          if (data.signal === "SCANNING") {
+            setAlertStatus("MARKET TREND NEUTRAL - LOOKING FOR SETUP");
+            setEntryTime('--:--:--'); 
+          } else {
+            if (remaining > 15) {
+              setAlertStatus("MATHEMATICAL SIGNAL LOCK");
+            } else {
+              setAlertStatus(`SURE SHOT MATRIX READY -> CHOOSE ${data.signal}`);
+            }
+            const nextCandleTime = new Date(now.getTime() + remaining * 1000);
+            setEntryTime(nextCandleTime.toLocaleTimeString('en-GB'));
+          }
+        }
+
+        if (data.type === 'SESSION_EXPIRED') {
+          sessionKickoutCleanup(data.msg);
+        }
+      } catch (err) {}
     };
 
-    // নেটওয়ার্ক ফেইলর বা ব্যাকএন্ড ক্র্যাশের কারণে সকেট বন্ধ হলে এই মেথড ফায়ার হবে
     ws.current.onclose = () => {
-      // সেশন টোকেন বৈধ থাকলে কিক-আউট করবে কিন্তু টোকেন ডিলিট করবে না (ইন্টারনেট ইস্যু)
-      // কিন্তু সার্ভার থেকে সেশন ক্লোজ হলে অলরেডি SESSION_EXPIRED ট্রিগার হয়ে ড্রাইভার ক্লিন করে দেবে।
       setIsConnected(false);
     };
 
     ws.current.onerror = () => {
-      setErrorMessage('সার্ভার কানেকশন এরর! আপনার রেন্ডার ব্যাকএন্ড URL-টি চেক করুন।');
+      setErrorMessage('সার্ভার কানেকশন এরর! ব্যাকএন্ড সচল আছে কি না তা নিশ্চিত করুন।');
     };
   };
 
@@ -262,9 +269,8 @@ function App() {
     return (
       <div className="login-screen">
         <div className="login-card">
-          <h2>RTX MATRIX V2.6</h2>
+          <h2>RTX MATRIX V2.8.6</h2>
           
-          {/* 🚀 ৩-খ: ডাইনামিক লাইভ এরর ইন্টারফেস বক্স */}
           {errorMessage && <div className="error-msg-box">{errorMessage}</div>}
 
           <form onSubmit={handleConnectEngine}>
@@ -288,13 +294,12 @@ function App() {
   return (
     <div className="app-container">
       <header>
-        <div className="gold-title">RTX BULLETPROOF V2.6-PRO</div>
+        <div className="gold-title">RTX BULLETPROOF V2.8.6-PRO</div>
         <button onClick={handleDisconnect} className="logout-btn">DISCONNECT</button>
       </header>
 
       <div className="chart-box">
         <iframe 
-          key={symbol}
           src={`https://s.tradingview.com/widgetembed/?symbol=${tvSymbol}&theme=dark&style=1&timezone=UTC`}
           width="100%" height="100%" frameBorder="0" allowFullScreen>
         </iframe>
@@ -328,7 +333,7 @@ function App() {
             <div className="grid-lbl">SERVER UTC TIME:</div><div className="grid-val">{serverTime}</div>
             <div className="grid-lbl">NEXT CANDLE ENTRY:</div><div className="grid-val">{entryTime}</div>
             <div className="grid-lbl">SELECTED MARKET:</div><div className="grid-val">{symbol.toUpperCase()}</div>
-            <div className="grid-lbl">SYSTEM STATUS:</div><div className="grid-val" style={{color: '#0ecb81'}}>CRASH-PROOF LFT</div>
+            <div className="grid-lbl">SYSTEM STATUS:</div><div className="grid-val" style={{color: '#0ecb81'}}>V2.8.6 LIVE LOCK</div>
           </div>
 
           <div className="accuracy-badge">TRUE CONFIDENCE SCORE: {accuracy}%</div>
