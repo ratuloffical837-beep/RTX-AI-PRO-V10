@@ -332,9 +332,9 @@ function PayForm({ method, setMethod, phone, setPhone, txId, setTxId, amount, se
   )
 }
 
-const MONTHLY_AMOUNT = 3000
-const BKASH_NUMBER = '01725218874'
-const NAGAD_NUMBER = '01725218874'
+//const MONTHLY_AMOUNT = 3000
+//const BKASH_NUMBER = '01725218874'
+//const NAGAD_NUMBER = '01725218874'
 
 const s = {
   card:       { background: '#141820', borderRadius: 14, padding: '16px', border: '1px solid #2b3139' },
