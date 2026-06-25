@@ -20,11 +20,11 @@ services:
       - key: RENDER_EXTERNAL_URL
         sync: true
 
-  - type: web
+- type: web
     name: master-ai-frontend
-    env: static
+    environment: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     envVars:
       - key: VITE_BACKEND_URL
-        sync: true
+        value: https://qx-mashaallha.onrender.com
