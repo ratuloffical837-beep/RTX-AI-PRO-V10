@@ -17,7 +17,8 @@ const C = {
   blue: '#60a5fa', pink: '#e2136e', orange: '#f7941d',
 }
 
-export default function PaymentPage({ tgUser, status }) {
+// ── props থেকে collection নাম আসবে ──
+export default function PaymentPage({ tgUser, status, usersCollection, paymentsCollection }) {
   const [method, setMethod]   = useState('')
   const [phone, setPhone]     = useState('')
   const [txId, setTxId]       = useState('')
@@ -34,10 +35,10 @@ export default function PaymentPage({ tgUser, status }) {
   }
 
   const handleSubmit = async () => {
-    if (!method)                    return setError('পেমেন্ট মেথড সিলেক্ট করুন')
+    if (!method)                     return setError('পেমেন্ট মেথড সিলেক্ট করুন')
     if (!phone || phone.length < 11) return setError('সঠিক ফোন নম্বর দিন')
-    if (!amount || isNaN(amount))   return setError('সঠিক পরিমাণ লিখুন')
-    if (!txId.trim())               return setError('ট্রানজেকশন আইডি লিখুন')
+    if (!amount || isNaN(amount))    return setError('সঠিক পরিমাণ লিখুন')
+    if (!txId.trim())                return setError('ট্রানজেকশন আইডি লিখুন')
 
     setLoading(true)
     setError('')
@@ -53,15 +54,22 @@ export default function PaymentPage({ tgUser, status }) {
         amount:    Number(amount),
         txId:      txId.trim(),
         status:    'pending',
+        // কোন App এর জন্য পেমেন্ট সেটা track করা
+        appType:   'master',
         createdAt: serverTimestamp(),
       }
 
-      await setDoc(doc(db, 'payments', txId.trim()), data)
+      // master_payments collection এ save করবে
+      await setDoc(doc(db, paymentsCollection, txId.trim()), data)
 
       await fetch(`${BACKEND_URL}/api/notify-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          usersCollection,
+          paymentsCollection,
+        }),
       })
 
       setDone(true)
@@ -73,7 +81,7 @@ export default function PaymentPage({ tgUser, status }) {
     }
   }
 
-  // Pending screen
+  // ── Pending screen ──
   if (done || status === 'pending') {
     return (
       <div style={{ background: C.bg, minHeight: '100vh', paddingBottom: 30 }}>
@@ -96,6 +104,7 @@ export default function PaymentPage({ tgUser, status }) {
     )
   }
 
+  // ── Rejected screen ──
   if (status === 'rejected') {
     return (
       <div style={{ background: C.bg, minHeight: '100vh', paddingBottom: 30 }}>
@@ -111,11 +120,13 @@ export default function PaymentPage({ tgUser, status }) {
             </div>
           </div>
           <PayForm {...{ method, setMethod, phone, setPhone, txId, setTxId, amount, setAmount, loading, error, copied, copyNum, handleSubmit }} />
+          <SupportButton />
         </div>
       </div>
     )
   }
 
+  // ── Expired screen ──
   if (status === 'expired') {
     return (
       <div style={{ background: C.bg, minHeight: '100vh', paddingBottom: 30 }}>
@@ -137,10 +148,12 @@ export default function PaymentPage({ tgUser, status }) {
     )
   }
 
+  // ── Main payment page ──
   return (
     <div style={{ background: C.bg, minHeight: '100vh', paddingBottom: 30 }}>
       <TopBanner />
       <div style={{ padding: '12px 16px' }}>
+
         {/* Header */}
         <div style={{ ...s.card, textAlign: 'center', padding: '20px 16px', marginBottom: 12 }}>
           <div style={{ fontSize: 44, marginBottom: 6 }}>💹</div>
@@ -150,10 +163,12 @@ export default function PaymentPage({ tgUser, status }) {
           <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>
             সাবস্ক্রিপশন — ৩০ দিন
           </div>
-          <div style={{ marginTop: 10, background: '#0d1117', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#9ba3af' }}>
-            👤 {tgUser.first_name} {tgUser.last_name || ''}
-            {tgUser.username && <span style={{ color: C.blue }}> @{tgUser.username}</span>}
-          </div>
+          {tgUser?.id && (
+            <div style={{ marginTop: 10, background: '#0d1117', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#9ba3af' }}>
+              👤 {tgUser.first_name} {tgUser.last_name || ''}
+              {tgUser.username && <span style={{ color: C.blue }}> @{tgUser.username}</span>}
+            </div>
+          )}
           <div style={{ marginTop: 12, padding: '10px', background: `${C.gold}11`, borderRadius: 10, border: `1px solid ${C.gold}33` }}>
             <div style={{ color: C.gold, fontWeight: 900, fontSize: 22 }}>৳{MONTHLY_AMOUNT}</div>
             <div style={{ color: C.muted, fontSize: 11 }}>প্রতি মাসে</div>
@@ -184,16 +199,16 @@ function SocialButtons() {
   return (
     <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
       <button onClick={() => window.open(GROUP_LINK, '_blank')} style={{
-        flex: 1, padding: '11px', borderRadius: 10,
-        background: '#1a2744', color: '#60a5fa', fontWeight: 700,
-        fontSize: 12, border: '1px solid #60a5fa33', cursor: 'pointer',
+        flex: 1, padding: '11px', borderRadius: 10, background: '#1a2744',
+        color: '#60a5fa', fontWeight: 700, fontSize: 12,
+        border: '1px solid #60a5fa33', cursor: 'pointer',
       }}>
         💬 Telegram Group
       </button>
       <button onClick={() => window.open(CHANNEL_LINK, '_blank')} style={{
-        flex: 1, padding: '11px', borderRadius: 10,
-        background: '#1a2744', color: '#60a5fa', fontWeight: 700,
-        fontSize: 12, border: '1px solid #60a5fa33', cursor: 'pointer',
+        flex: 1, padding: '11px', borderRadius: 10, background: '#1a2744',
+        color: '#60a5fa', fontWeight: 700, fontSize: 12,
+        border: '1px solid #60a5fa33', cursor: 'pointer',
       }}>
         📢 Channel
       </button>
@@ -206,8 +221,8 @@ function SupportButton() {
     <button onClick={() => window.open(SUPPORT_LINK, '_blank')} style={{
       width: '100%', padding: '13px', borderRadius: 10,
       background: '#1a2744', color: '#60a5fa',
-      fontWeight: 700, fontSize: 13, border: '1px solid #60a5fa44',
-      cursor: 'pointer', marginTop: 8,
+      fontWeight: 700, fontSize: 13,
+      border: '1px solid #60a5fa44', cursor: 'pointer', marginTop: 8,
     }}>
       💬 Customer Support
     </button>
@@ -254,8 +269,8 @@ function PayForm({ method, setMethod, phone, setPhone, txId, setTxId, amount, se
                 flex: 1, padding: '12px', borderRadius: 8, fontWeight: 700,
                 fontSize: 13, cursor: 'pointer', transition: '0.2s',
                 background: method === key ? color + '22' : '#1a1f2e',
-                color: method === key ? color : '#666',
-                border: method === key ? `2px solid ${color}` : '2px solid #2b3139',
+                color:      method === key ? color : '#666',
+                border:     method === key ? `2px solid ${color}` : '2px solid #2b3139',
               }}>{key}</button>
             ))}
           </div>
@@ -264,22 +279,37 @@ function PayForm({ method, setMethod, phone, setPhone, txId, setTxId, amount, se
         {/* Phone */}
         <div style={{ marginBottom: 12 }}>
           <div style={s.fieldLabel}>আপনার ফোন নম্বর</div>
-          <input type="tel" placeholder="01XXXXXXXXX" value={phone}
-            onChange={e => setPhone(e.target.value)} style={s.input} />
+          <input
+            type="tel"
+            placeholder="01XXXXXXXXX"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            style={s.input}
+          />
         </div>
 
         {/* Amount */}
         <div style={{ marginBottom: 12 }}>
           <div style={s.fieldLabel}>পরিমাণ (টাকা)</div>
-          <input type="number" placeholder="যত টাকা পাঠিয়েছেন" value={amount}
-            onChange={e => setAmount(e.target.value)} style={s.input} />
+          <input
+            type="number"
+            placeholder="যত টাকা পাঠিয়েছেন"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+            style={s.input}
+          />
         </div>
 
         {/* TxID */}
         <div style={{ marginBottom: 14 }}>
           <div style={s.fieldLabel}>ট্রানজেকশন আইডি / TrxID</div>
-          <input type="text" placeholder="TrxID বা Ref নম্বর লিখুন" value={txId}
-            onChange={e => setTxId(e.target.value)} style={s.input} />
+          <input
+            type="text"
+            placeholder="TrxID বা Ref নম্বর লিখুন"
+            value={txId}
+            onChange={e => setTxId(e.target.value)}
+            style={s.input}
+          />
         </div>
 
         {error && (
@@ -291,7 +321,7 @@ function PayForm({ method, setMethod, phone, setPhone, txId, setTxId, amount, se
         <button onClick={handleSubmit} disabled={loading} style={{
           width: '100%', padding: '14px', borderRadius: 10,
           background: loading ? '#1a1f2e' : '#f3ba2f',
-          color: loading ? '#555' : '#000',
+          color:      loading ? '#555' : '#000',
           fontWeight: 800, fontSize: 14, border: 'none',
           cursor: loading ? 'not-allowed' : 'pointer',
         }}>
@@ -302,14 +332,14 @@ function PayForm({ method, setMethod, phone, setPhone, txId, setTxId, amount, se
   )
 }
 
+const MONTHLY_AMOUNT = 3000
 const BKASH_NUMBER = '01725218874'
 const NAGAD_NUMBER = '01725218874'
-const MONTHLY_AMOUNT = 3000
 
 const s = {
-  card: { background: '#141820', borderRadius: 14, padding: '16px', border: '1px solid #2b3139' },
-  numCard: { flex: 1, background: '#0d1117', borderRadius: 10, padding: '12px 10px', textAlign: 'center', cursor: 'pointer', border: '1px solid #2b3139' },
-  label: { fontSize: 10, color: '#555', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 },
+  card:       { background: '#141820', borderRadius: 14, padding: '16px', border: '1px solid #2b3139' },
+  numCard:    { flex: 1, background: '#0d1117', borderRadius: 10, padding: '12px 10px', textAlign: 'center', cursor: 'pointer', border: '1px solid #2b3139' },
+  label:      { fontSize: 10, color: '#555', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 },
   fieldLabel: { fontSize: 10, color: '#555', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 },
-  input: { width: '100%', padding: '12px', borderRadius: 8, background: '#0d1117', color: '#e0e0e0', border: '1px solid #2b3139', fontSize: 13, outline: 'none', boxSizing: 'border-box' },
-  }
+  input:      { width: '100%', padding: '12px', borderRadius: 8, background: '#0d1117', color: '#e0e0e0', border: '1px solid #2b3139', fontSize: 13, outline: 'none', boxSizing: 'border-box' },
+    }
