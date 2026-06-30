@@ -8,7 +8,7 @@ const SUPPORT_LINK   = 'https://t.me/ratulhossain56'
 const GROUP_LINK     = 'https://t.me/ratulhossain424'
 const CHANNEL_LINK   = 'https://t.me/ratulhossain4241'
 const MONTHLY_AMOUNT = 3000
-const BACKEND_URL    = import.meta.env.VITE_BACKEND_URL || 'https://qx-mashaallha.onrender.com'
+const BACKEND_URL    = import.meta.env.VITE_BACKEND_URL || 'https://rtx-ai-pro-v10.onrender.com'
 
 const C = {
   bg: '#0b0e11', card: '#141820', panel: '#1a1f2e',
