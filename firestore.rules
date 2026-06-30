@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ══════════════════════════════════════
+    // master_users — শুধু পড়া যাবে
+    // লেখার কাজ শুধু Admin SDK করবে
+    // ══════════════════════════════════════
+    match /master_users/{userId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ══════════════════════════════════════
+    // master_payments — শুধু create
+    // Spam Protection যোগ করা হয়েছে
+    // ══════════════════════════════════════
+    match /master_payments/{txId} {
+      allow create: if request.resource.data.keys().hasAll([
+                        'userId','txId','amount',
+                        'method','phone','status'
+                      ])
+                      && request.resource.data.amount >= 500
+                      && request.resource.data.status == 'pending'
+                      && request.resource.data.txId is string
+                      && request.resource.data.txId.size() >= 4;
+      allow read:   if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ══════════════════════════════════════
+    // পুরানো Collections (অপরিবর্তিত)
+    // ══════════════════════════════════════
+    match /users/{userId} {
+      allow read:  if true;
+      allow write: if false;
+    }
+
+    match /payments/{txId} {
+      allow create: if true;
+      allow read:   if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}
