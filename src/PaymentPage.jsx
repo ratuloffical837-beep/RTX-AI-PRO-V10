@@ -27,6 +27,7 @@ export default function PaymentPage({
   const [loading, setLoading] = useState(false)
   const [done,    setDone]    = useState(false)
   const [error,   setError]   = useState('')
+  const [debug,   setDebug]   = useState('')
   const [copied,  setCopied]  = useState('')
 
   const copyNum = (num, label) => {
@@ -36,15 +37,17 @@ export default function PaymentPage({
   }
 
   const handleSubmit = async () => {
-    if (!method)                              return setError('পেমেন্ট মেথড সিলেক্ট করুন')
-    if (!phone || phone.length < 11)          return setError('সঠিক ফোন নম্বর দিন (১১ ডিজিট)')
-    if (!amount || isNaN(amount))             return setError('সঠিক পরিমাণ লিখুন')
-    // ✅ FIX: Minimum amount validation
-    if (Number(amount) < MONTHLY_AMOUNT)      return setError(`সর্বনিম্ন ৳${MONTHLY_AMOUNT} পাঠাতে হবে`)
+    setError('')
+    setDebug('')
+
+    if (!method)                                return setError('পেমেন্ট মেথড সিলেক্ট করুন')
+    if (!phone || phone.length < 11)            return setError('সঠিক ফোন নম্বর দিন (১১ ডিজিট)')
+    if (!amount || isNaN(amount))               return setError('সঠিক পরিমাণ লিখুন')
+    if (Number(amount) < MONTHLY_AMOUNT)        return setError(`সর্বনিম্ন ৳${MONTHLY_AMOUNT} পাঠাতে হবে`)
     if (!txId.trim() || txId.trim().length < 4) return setError('সঠিক ট্রানজেকশন আইডি লিখুন')
 
     setLoading(true)
-    setError('')
+    setDebug('🔄 শুরু হচ্ছে...')
 
     try {
       const name = tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : '')
@@ -61,28 +64,51 @@ export default function PaymentPage({
         createdAt: serverTimestamp(),
       }
 
-      // master_payments collection এ save
-      await setDoc(doc(db, paymentsCollection, txId.trim()), data)
+      setDebug('🔄 Firebase এ সেভ হচ্ছে...')
 
-      // Backend কে notify করো
-      await fetch(`${BACKEND_URL}/api/notify-payment`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          ...data,
-          usersCollection,
-          paymentsCollection,
-        }),
-      })
+      // ── STEP 1: Firebase Save ──
+      try {
+        const collectionName = paymentsCollection || 'master_payments'
+        await setDoc(doc(db, collectionName, txId.trim()), data)
+        setDebug('✅ Firebase সফল! Backend এ পাঠাচ্ছি...')
+      } catch (fbErr) {
+        console.error('Firebase Error:', fbErr)
+        setError(`❌ Firebase: ${fbErr.code || fbErr.message}`)
+        setDebug(`Firebase Error Code: ${fbErr.code}\nMessage: ${fbErr.message}`)
+        setLoading(false)
+        return
+      }
+
+      // ── STEP 2: Backend Notify ──
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/notify-payment`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            ...data,
+            createdAt: null,
+            usersCollection:    usersCollection    || 'master_users',
+            paymentsCollection: paymentsCollection || 'master_payments',
+          }),
+        })
+
+        const result = await response.json()
+        setDebug(`✅ Backend Response: ${JSON.stringify(result)}`)
+
+        if (!response.ok) {
+          throw new Error(`Backend status: ${response.status}`)
+        }
+      } catch (apiErr) {
+        console.error('Backend Error:', apiErr)
+        setDebug(`⚠️ Backend Error: ${apiErr.message}\n(Firebase সফল হয়েছে, Backend fail)`)
+        // Backend fail হলেও Firebase সফল, তাই done করি
+      }
 
       setDone(true)
     } catch (e) {
-      console.error(e)
-      if (e.code === 'permission-denied') {
-        setError('পেমেন্ট সেভ হয়নি। একটু পরে আবার চেষ্টা করুন।')
-      } else {
-        setError('সাবমিট হয়নি। ইন্টারনেট চেক করুন।')
-      }
+      console.error('General Error:', e)
+      setError(`❌ Error: ${e.message || 'Unknown error'}`)
+      setDebug(`Error: ${JSON.stringify(e)}`)
     } finally {
       setLoading(false)
     }
@@ -126,7 +152,7 @@ export default function PaymentPage({
               সঠিক ট্রানজেকশন আইডি দিয়ে আবার পেমেন্ট করুন।
             </div>
           </div>
-          <PayForm {...{ method, setMethod, phone, setPhone, txId, setTxId, amount, setAmount, loading, error, copied, copyNum, handleSubmit }} />
+          <PayForm {...{ method, setMethod, phone, setPhone, txId, setTxId, amount, setAmount, loading, error, debug, copied, copyNum, handleSubmit }} />
           <SupportButton />
         </div>
       </div>
@@ -148,7 +174,7 @@ export default function PaymentPage({
               পুনরায় পেমেন্ট করুন এবং ৩০ দিন ব্যবহার করুন।
             </div>
           </div>
-          <PayForm {...{ method, setMethod, phone, setPhone, txId, setTxId, amount, setAmount, loading, error, copied, copyNum, handleSubmit }} />
+          <PayForm {...{ method, setMethod, phone, setPhone, txId, setTxId, amount, setAmount, loading, error, debug, copied, copyNum, handleSubmit }} />
           <SupportButton />
         </div>
       </div>
@@ -183,7 +209,7 @@ export default function PaymentPage({
         </div>
 
         <SocialButtons />
-        <PayForm {...{ method, setMethod, phone, setPhone, txId, setTxId, amount, setAmount, loading, error, copied, copyNum, handleSubmit }} />
+        <PayForm {...{ method, setMethod, phone, setPhone, txId, setTxId, amount, setAmount, loading, error, debug, copied, copyNum, handleSubmit }} />
         <SupportButton />
       </div>
     </div>
@@ -239,7 +265,7 @@ function SupportButton() {
 
 function PayForm({
   method, setMethod, phone, setPhone, txId, setTxId,
-  amount, setAmount, loading, error, copied, copyNum, handleSubmit
+  amount, setAmount, loading, error, debug, copied, copyNum, handleSubmit
 }) {
   return (
     <>
@@ -316,13 +342,28 @@ function PayForm({
             value={txId} onChange={e => setTxId(e.target.value)} style={s.input} />
         </div>
 
+        {/* ✅ ERROR DISPLAY */}
         {error && (
           <div style={{
-            background: '#f6465d11', border: '1px solid #f6465d44',
-            borderRadius: 8, padding: '10px 12px',
-            color: '#f6465d', fontSize: 12, marginBottom: 12,
+            background: '#f6465d22', border: '1px solid #f6465d',
+            borderRadius: 8, padding: '12px',
+            color: '#ff6b7a', fontSize: 12, marginBottom: 12,
+            fontWeight: 700,
           }}>
             ⚠️ {error}
+          </div>
+        )}
+
+        {/* ✅ DEBUG INFO - এটা দেখলে আমি সমস্যা ধরতে পারবো */}
+        {debug && (
+          <div style={{
+            background: '#1a2744', border: '1px solid #60a5fa',
+            borderRadius: 8, padding: '12px',
+            color: '#60a5fa', fontSize: 11, marginBottom: 12,
+            whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+            fontFamily: 'monospace',
+          }}>
+            🔍 DEBUG:{'\n'}{debug}
           </div>
         )}
 
