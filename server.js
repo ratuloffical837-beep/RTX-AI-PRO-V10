@@ -5,8 +5,8 @@ import { initializeApp, cert } from 'firebase-admin/app'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 
 // ══════════════════════════════════════════════
-//   MASTER AI BACKEND v4.0
-//   Professional Error-Free Server
+//   MASTER AI BACKEND v4.1 — Production Ready
+//   All Bugs Fixed + Cache + CORS + Keep-Alive
 // ══════════════════════════════════════════════
 
 // ── Firebase Admin ──
@@ -30,15 +30,57 @@ const USERS_COL    = 'master_users'
 const PAYMENTS_COL = 'master_payments'
 
 if (!process.env.WEBHOOK_SECRET) {
-  console.error('❌ WEBHOOK_SECRET env variable is required!')
+  console.error('❌ WEBHOOK_SECRET missing!')
   process.exit(1)
 }
 const WH_SECRET = process.env.WEBHOOK_SECRET
 const BASE_URL  = process.env.RENDER_EXTERNAL_URL || 'http://localhost:5000'
 
+// ── CORS — নির্দিষ্ট Domain ──
+const allowedOrigins = [
+  'https://rtx-ai-pro-v10-1.onrender.com',
+  'https://rtx-ai-pro-v10.onrender.com',
+  'http://localhost:5173',
+  'http://localhost:4173',
+]
+
 const app = express()
-app.use(cors({ origin: '*' }))
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error('CORS blocked'))
+    }
+  },
+  credentials: true,
+}))
 app.use(express.json())
+
+// ══════════════════════════════════════════════
+//   IN-MEMORY CACHE — Rate Limit Protection
+// ══════════════════════════════════════════════
+const cache = new Map()
+const CACHE_TTL = 30 * 1000 // ৩০ সেকেন্ড cache
+
+const getCache = (key) => {
+  const item = cache.get(key)
+  if (!item) return null
+  if (Date.now() - item.time > CACHE_TTL) {
+    cache.delete(key)
+    return null
+  }
+  return item.data
+}
+
+const setCache = (key, data) => {
+  cache.set(key, { data, time: Date.now() })
+  // Cache size limit
+  if (cache.size > 200) {
+    const firstKey = cache.keys().next().value
+    cache.delete(firstKey)
+  }
+}
 
 // ── Telegram API Helper ──
 const tgAPI = async (method, body) => {
@@ -59,58 +101,63 @@ const tgAPI = async (method, body) => {
 }
 
 // ── Health Check ──
-app.get('/', (_, res) => res.send('✅ Master AI Backend v4.0 Online'))
+app.get('/', (_, res) => res.send('✅ Master AI Backend v4.1 Online'))
 
 // ══════════════════════════════════════════════
-//   FINNHUB PROXY — User API Key ভিত্তিক
-//   User নিজের Key পাঠাবে Header এ
+//   FINNHUB PROXY — With Cache
+//   User এর API Key Header এ আসবে
 // ══════════════════════════════════════════════
-
-// ── Forex Candle Data ──
 app.get('/api/market-data', async (req, res) => {
   try {
-    const apiKey = req.headers['x-finnhub-key'] || req.query.apiKey
+    const apiKey = req.headers['x-finnhub-key']
     if (!apiKey) {
       return res.status(400).json({ ok: false, msg: 'API Key required', candles: [] })
     }
 
     const { symbol, resolution, from, to } = req.query
     if (!symbol || !resolution || !from || !to) {
-      return res.status(400).json({ ok: false, msg: 'Missing params: symbol, resolution, from, to', candles: [] })
+      return res.status(400).json({ ok: false, msg: 'Missing params', candles: [] })
+    }
+
+    // Cache check
+    const cacheKey = `${symbol}_${resolution}_${Math.floor(Number(from)/300)}`
+    const cached   = getCache(cacheKey)
+    if (cached) {
+      return res.json({ ok: true, candles: cached, cached: true })
     }
 
     const url = `https://finnhub.io/api/v1/forex/candle?symbol=${encodeURIComponent(symbol)}&resolution=${resolution}&from=${from}&to=${to}&token=${apiKey}`
 
     const controller = new AbortController()
-    const timeout    = setTimeout(() => controller.abort(), 10000)
+    const timeout    = setTimeout(() => controller.abort(), 12000)
 
     let response
     try {
       response = await fetch(url, { signal: controller.signal })
-    } catch (fetchErr) {
+    } catch (e) {
       clearTimeout(timeout)
-      if (fetchErr.name === 'AbortError') {
-        return res.status(504).json({ ok: false, msg: 'Finnhub timeout', candles: [] })
+      if (e.name === 'AbortError') {
+        return res.status(504).json({ ok: false, msg: 'Timeout', candles: [] })
       }
-      return res.status(502).json({ ok: false, msg: 'Finnhub connection failed', candles: [] })
+      return res.status(502).json({ ok: false, msg: 'Connection failed', candles: [] })
     }
     clearTimeout(timeout)
 
+    if (response.status === 401) {
+      return res.status(401).json({ ok: false, msg: 'Invalid API Key ❌', candles: [] })
+    }
+    if (response.status === 429) {
+      return res.status(429).json({ ok: false, msg: 'Rate Limit ⏳ — ৬০ সেকেন্ড অপেক্ষা করুন', candles: [] })
+    }
     if (!response.ok) {
-      if (response.status === 401) {
-        return res.status(401).json({ ok: false, msg: 'Invalid API Key', candles: [] })
-      }
-      if (response.status === 429) {
-        return res.status(429).json({ ok: false, msg: 'Rate limit exceeded. Wait 60 seconds.', candles: [] })
-      }
-      return res.status(response.status).json({ ok: false, msg: `Finnhub error: ${response.status}`, candles: [] })
+      return res.status(response.status).json({ ok: false, msg: `Finnhub error ${response.status}`, candles: [] })
     }
 
     let data
     try {
       data = await response.json()
     } catch {
-      return res.status(502).json({ ok: false, msg: 'Invalid JSON from Finnhub', candles: [] })
+      return res.status(502).json({ ok: false, msg: 'Invalid response', candles: [] })
     }
 
     if (data.s === 'no_data' || !data.t || !data.o || !data.h || !data.l || !data.c) {
@@ -122,9 +169,12 @@ app.get('/api/market-data', async (req, res) => {
       high:   String(data.h[i]),
       low:    String(data.l[i]),
       close:  String(data.c[i]),
-      volume: data.v ? data.v[i] : 0,
+      volume: data.v ? (data.v[i] || 0) : 0,
       epoch:  time,
     }))
+
+    // Cache save
+    setCache(cacheKey, candles)
 
     res.json({ ok: true, candles, count: candles.length })
 
@@ -137,20 +187,20 @@ app.get('/api/market-data', async (req, res) => {
 // ── Live Quote ──
 app.get('/api/quote', async (req, res) => {
   try {
-    const apiKey = req.headers['x-finnhub-key'] || req.query.apiKey
-    if (!apiKey) {
-      return res.status(400).json({ ok: false, price: null })
-    }
+    const apiKey = req.headers['x-finnhub-key']
+    if (!apiKey) return res.status(400).json({ ok: false, price: null })
 
     const { symbol } = req.query
-    if (!symbol) {
-      return res.status(400).json({ ok: false, price: null })
-    }
+    if (!symbol) return res.status(400).json({ ok: false, price: null })
+
+    // Cache check
+    const cacheKey = `quote_${symbol}`
+    const cached   = getCache(cacheKey)
+    if (cached) return res.json({ ok: true, ...cached, cached: true })
 
     const now  = Math.floor(Date.now() / 1000)
     const from = now - 600
-
-    const url = `https://finnhub.io/api/v1/forex/candle?symbol=${encodeURIComponent(symbol)}&resolution=1&from=${from}&to=${now}&token=${apiKey}`
+    const url  = `https://finnhub.io/api/v1/forex/candle?symbol=${encodeURIComponent(symbol)}&resolution=1&from=${from}&to=${now}&token=${apiKey}`
 
     const controller = new AbortController()
     const timeout    = setTimeout(() => controller.abort(), 8000)
@@ -158,38 +208,32 @@ app.get('/api/quote', async (req, res) => {
     let response
     try {
       response = await fetch(url, { signal: controller.signal })
-    } catch (fetchErr) {
+    } catch {
       clearTimeout(timeout)
       return res.json({ ok: false, price: null })
     }
     clearTimeout(timeout)
 
-    if (!response.ok) {
-      return res.json({ ok: false, price: null })
-    }
+    if (!response.ok) return res.json({ ok: false, price: null })
 
     let data
-    try {
-      data = await response.json()
-    } catch {
-      return res.json({ ok: false, price: null })
-    }
+    try { data = await response.json() } catch { return res.json({ ok: false, price: null }) }
 
-    if (!data.c || data.c.length === 0) {
-      return res.json({ ok: false, price: null })
-    }
+    if (!data.c || data.c.length === 0) return res.json({ ok: false, price: null })
 
     const price     = data.c[data.c.length - 1]
     const prevPrice = data.c.length > 1 ? data.c[data.c.length - 2] : price
     const change    = price - prevPrice
     const changePct = prevPrice !== 0 ? (change / prevPrice) * 100 : 0
 
-    res.json({
-      ok: true,
+    const result = {
       price:     parseFloat(price.toFixed(6)),
       change:    parseFloat(change.toFixed(6)),
       changePct: parseFloat(changePct.toFixed(4)),
-    })
+    }
+
+    setCache(cacheKey, result)
+    res.json({ ok: true, ...result })
 
   } catch (e) {
     console.error('quote error:', e.message)
@@ -200,12 +244,11 @@ app.get('/api/quote', async (req, res) => {
 // ══════════════════════════════════════════════
 //   KEEP-ALIVE — Render Sleep Prevention
 // ══════════════════════════════════════════════
-const SELF_URL = process.env.RENDER_EXTERNAL_URL
-if (SELF_URL && process.env.NODE_ENV === 'production') {
+if (process.env.RENDER_EXTERNAL_URL && process.env.NODE_ENV === 'production') {
   setInterval(async () => {
     try {
-      const r = await fetch(`${SELF_URL}/`)
-      if (r.ok) console.log('🔄 Keep-alive OK')
+      await fetch(`${process.env.RENDER_EXTERNAL_URL}/`)
+      console.log('🔄 Keep-alive ping OK')
     } catch (e) {
       console.error('Keep-alive error:', e.message)
     }
@@ -217,11 +260,7 @@ if (SELF_URL && process.env.NODE_ENV === 'production') {
 // ══════════════════════════════════════════════
 app.post('/api/notify-payment', async (req, res) => {
   try {
-    const {
-      userId, name, username, phone,
-      method, amount, txId,
-      usersCollection, paymentsCollection
-    } = req.body
+    const { userId, name, username, phone, method, amount, txId, usersCollection, paymentsCollection } = req.body
 
     if (!userId || !txId) {
       return res.status(400).json({ ok: false, msg: 'Missing fields' })
@@ -235,11 +274,10 @@ app.post('/api/notify-payment', async (req, res) => {
       `👤 নাম: <b>${name || 'N/A'}</b>\n` +
       `🆔 TG ID: <code>${userId}</code>\n` +
       (username ? `📎 @${username}\n` : '') +
-      `📱 ফোন: <code>${phone}</code>\n` +
+      `📱 ফোন: <code>${phone || 'N/A'}</code>\n` +
       `💰 পরিমাণ: <b>৳${amount}</b>\n` +
       `📲 মেথড: <b>${method}</b>\n` +
-      `🔑 TrxID: <code>${txId}</code>\n` +
-      `🗂️ Collection: <code>${targetUsersCol}</code>`
+      `🔑 TrxID: <code>${txId}</code>`
 
     await tgAPI('sendMessage', {
       chat_id:    ADMIN_ID,
@@ -248,12 +286,10 @@ app.post('/api/notify-payment', async (req, res) => {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: '✅ এপ্রুভ (৩০ দিন)', callback_data: `ok:${userId}:${txId}` },
+            { text: '✅ এপ্রুভ (৩০ দিন)', callback_data: `ok:${userId}:${txId}:${encodeURIComponent(name||'')}` },
             { text: '❌ রিজেক্ট',          callback_data: `no:${userId}:${txId}` },
           ],
-          [
-            { text: '👥 Active Users', callback_data: 'users' },
-          ],
+          [{ text: '👥 Active Users', callback_data: 'users' }],
         ],
       },
     })
@@ -273,21 +309,18 @@ app.post(`/webhook/${WH_SECRET}`, async (req, res) => {
 
   try {
     const update = req.body
-    if (!update || !update.callback_query) return
+    if (!update?.callback_query) return
 
     const cb     = update.callback_query
-    const data   = cb.data
-    const chatId = cb.message.chat.id
-    const msgId  = cb.message.message_id
+    const data   = cb.data || ''
+    const chatId = cb.message?.chat?.id
+    const msgId  = cb.message?.message_id
 
-    const ack = (text) => tgAPI('answerCallbackQuery', {
-      callback_query_id: cb.id,
-      text: text ? text.substring(0, 200) : 'OK',
-    })
+    if (!chatId) return
 
+    const ack     = (text) => tgAPI('answerCallbackQuery', { callback_query_id: cb.id, text: String(text).substring(0, 200) })
     const editBtn = (label) => tgAPI('editMessageReplyMarkup', {
-      chat_id:      chatId,
-      message_id:   msgId,
+      chat_id: chatId, message_id: msgId,
       reply_markup: { inline_keyboard: [[{ text: label, callback_data: 'done' }]] },
     })
 
@@ -296,16 +329,13 @@ app.post(`/webhook/${WH_SECRET}`, async (req, res) => {
       const parts  = data.split(':')
       const userId = parts[1]
       const txId   = parts[2]
+      // Name সরাসরি callback_data থেকে নেওয়া হচ্ছে (Regex dependency বাদ)
+      const userName = parts[3] ? decodeURIComponent(parts[3]) : ''
 
-      if (!userId || !txId) { await ack('❌ Invalid data'); return }
+      if (!userId || !txId) { await ack('❌ Invalid'); return }
 
       try {
-        const now       = new Date()
-        const expiresAt = new Date(now.getTime() + 30 * 24 * 3600 * 1000)
-
-        const rawText   = cb.message.text || ''
-        const nameMatch = rawText.match(/নাম: (.+)/) || rawText.match(/👤 নাম: (.+)/)
-        const userName  = nameMatch ? nameMatch[1].replace(/<[^>]+>/g, '').trim() : ''
+        const expiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000)
 
         await db.collection(USERS_COL).doc(userId).set({
           status:     'approved',
@@ -315,9 +345,8 @@ app.post(`/webhook/${WH_SECRET}`, async (req, res) => {
           name:       userName,
         }, { merge: true })
 
-        try {
-          await db.collection(PAYMENTS_COL).doc(txId).update({ status: 'approved' })
-        } catch {}
+        // Payment update — error ignore করব
+        await db.collection(PAYMENTS_COL).doc(txId).update({ status: 'approved' }).catch(() => {})
 
         await ack('✅ এপ্রুভ সফল!')
         await editBtn('✅ এপ্রুভ হয়েছে')
@@ -331,7 +360,7 @@ app.post(`/webhook/${WH_SECRET}`, async (req, res) => {
 
       } catch (e) {
         console.error('Approve error:', e.message)
-        await ack('❌ Error: ' + (e.message || '').substring(0, 100))
+        await ack('❌ Error: ' + e.message.substring(0, 100))
       }
 
     // ── REJECT ──
@@ -339,42 +368,32 @@ app.post(`/webhook/${WH_SECRET}`, async (req, res) => {
       const parts  = data.split(':')
       const userId = parts[1]
       const txId   = parts[2]
-
-      if (!userId || !txId) { await ack('❌ Invalid data'); return }
+      if (!userId || !txId) { await ack('❌ Invalid'); return }
 
       try {
-        try {
-          await db.collection(PAYMENTS_COL).doc(txId).update({ status: 'rejected' })
-        } catch {}
+        await db.collection(PAYMENTS_COL).doc(txId).update({ status: 'rejected' }).catch(() => {})
         await db.collection(USERS_COL).doc(userId).set({ status: 'rejected' }, { merge: true })
-
         await ack('❌ রিজেক্ট হয়েছে')
         await editBtn('❌ রিজেক্ট হয়েছে')
-
         await tgAPI('sendMessage', {
           chat_id:    userId,
           text:       `❌ <b>পেমেন্ট রিজেক্ট</b>\n\nসঠিক TrxID দিয়ে আবার পেমেন্ট করুন।\nসাপোর্ট: @ratulhossain56`,
           parse_mode: 'HTML',
         }).catch(() => {})
-
       } catch (e) {
-        console.error('Reject error:', e.message)
         await ack('❌ Error')
       }
 
-    // ── USERS LIST ──
+    // ── USERS ──
     } else if (data === 'users') {
       try {
-        const snap = await db.collection(USERS_COL)
-          .where('status', '==', 'approved')
-          .get()
-
+        const snap = await db.collection(USERS_COL).where('status', '==', 'approved').get()
         if (snap.empty) { await ack('কোনো active user নেই'); return }
 
         const users = snap.docs.map(d => ({ id: d.id, ...d.data() }))
         await ack(`${users.length} জন active`)
 
-        const lines = users.map(u => {
+        const lines = users.slice(0, 30).map(u => {
           const exp = u.expiresAt?.toDate?.()?.toLocaleDateString('bn-BD', { timeZone: 'Asia/Dhaka' }) || 'N/A'
           return `👤 <b>${u.name || 'N/A'}</b> | <code>${u.id}</code> | ${exp}`
         }).join('\n')
@@ -390,9 +409,7 @@ app.post(`/webhook/${WH_SECRET}`, async (req, res) => {
           parse_mode:   'HTML',
           reply_markup: { inline_keyboard: keyboard },
         })
-
       } catch (e) {
-        console.error('Users error:', e.message)
         await ack('❌ Error')
       }
 
@@ -400,25 +417,17 @@ app.post(`/webhook/${WH_SECRET}`, async (req, res) => {
     } else if (data.startsWith('dis:')) {
       const userId = data.split(':')[1]
       if (!userId) { await ack('❌ Invalid'); return }
-
       try {
         await db.collection(USERS_COL).doc(userId).update({
-          status:    'disconnected',
-          expiresAt: new Date(0),
+          status: 'disconnected', expiresAt: new Date(0),
         })
-
         await ack('🔴 Disconnect সফল!')
-
         await tgAPI('sendMessage', {
           chat_id:    userId,
-          text:       `⚠️ <b>সাবস্ক্রিপশন শেষ</b>\n\nআপনার Master AI অ্যাক্সেস বন্ধ করা হয়েছে।\nপুনরায় পেমেন্ট করলে অ্যাক্সেস পাবেন।`,
+          text:       `⚠️ <b>সাবস্ক্রিপশন শেষ</b>\n\nআপনার অ্যাক্সেস বন্ধ করা হয়েছে।\nপুনরায় পেমেন্ট করলে অ্যাক্সেস পাবেন।`,
           parse_mode: 'HTML',
         }).catch(() => {})
-
-      } catch (e) {
-        console.error('Disconnect error:', e.message)
-        await ack('❌ Error')
-      }
+      } catch { await ack('❌ Error') }
 
     } else if (data === 'done') {
       await ack('OK')
@@ -432,11 +441,11 @@ app.post(`/webhook/${WH_SECRET}`, async (req, res) => {
 // ── Server Start ──
 const PORT = process.env.PORT || 5000
 app.listen(PORT, async () => {
-  console.log(`✅ Master AI Server v4.0 running on port ${PORT}`)
-  if (process.env.NODE_ENV === 'production' && BOT_TOKEN && BASE_URL !== 'http://localhost:5000') {
+  console.log(`✅ Master AI Server v4.1 running on port ${PORT}`)
+  if (process.env.NODE_ENV === 'production' && BOT_TOKEN) {
     try {
       const r = await tgAPI('setWebhook', { url: `${BASE_URL}/webhook/${WH_SECRET}` })
-      console.log('Webhook registered:', r.description || r.result)
+      console.log('Webhook:', r.description || r.result)
     } catch (e) {
       console.error('Webhook register error:', e.message)
     }
