@@ -18,13 +18,13 @@ services:
       - key: WEBHOOK_SECRET
         sync: false
       - key: RENDER_EXTERNAL_URL
-        sync: false
+        value: https://rtx-ai-pro-v10.onrender.com
 
   - type: web
     name: master-ai-frontend
     env: static
-    buildCommand: npm install && npm run build
+    buildCommand: VITE_BACKEND_URL=https://rtx-ai-pro-v10.onrender.com npm install && npm run build
     staticPublishPath: ./dist
     envVars:
       - key: VITE_BACKEND_URL
-        value: https://qx-mashaallha.onrender.com
+        value: https://rtx-ai-pro-v10.onrender.com
